@@ -62,4 +62,7 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private Profile profile;
 }
