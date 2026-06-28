@@ -1,4 +1,7 @@
 package com.restaurant.rest_api.entity;
 
-public class TableStatus {
+public enum TableStatus {
+    AVAILABLE,
+    OCCUPIED,
+    RESERVED
 }
