@@ -3,7 +3,7 @@ package com.restaurant.rest_api.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity(name = "restaurant_table")
+@Entity(name = "restaurant_tables")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
