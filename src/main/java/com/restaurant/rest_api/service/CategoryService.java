@@ -47,7 +47,9 @@ public class CategoryService {
     public CategoryResponse updateCategory(Long id, CategoryRequest request){
         Category category = findCategory(id);
         category.setName(request.name());
-        category.setDescription(request.description());
+        if (request.description() != null){
+            category.setDescription(request.description());
+        }
         Category saved = repository.save(category);
         return toResponse(saved);
     }
