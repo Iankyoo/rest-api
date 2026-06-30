@@ -1,5 +1,7 @@
 package com.restaurant.rest_api.dto;
 
+import com.restaurant.rest_api.entity.Category;
+
 import java.math.BigDecimal;
 import java.util.Set;
 

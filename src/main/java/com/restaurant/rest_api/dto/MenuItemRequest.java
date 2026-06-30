@@ -1,5 +1,6 @@
 package com.restaurant.rest_api.dto;
 
+import com.restaurant.rest_api.entity.Category;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
