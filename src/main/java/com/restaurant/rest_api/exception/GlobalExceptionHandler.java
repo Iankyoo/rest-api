@@ -20,4 +20,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(ex.getMessage()));
     }
+
+    @ExceptionHandler(MenuItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> menuItemNotFoundHandler(MenuItemNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(RestaurantTableNotFoundException.class)
+    public ResponseEntity<ErrorResponse> restaurantTableNotFoundHandler(RestaurantTableNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
 }
