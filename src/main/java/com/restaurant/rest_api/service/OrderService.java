@@ -30,6 +30,11 @@ public class OrderService {
                 .orElseThrow(() -> new RestaurantTableNotFoundException(id));
     }
 
+    private Order findOrder(Long id){
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+
     private OrderResponse toResponse(Order order){
         return new OrderResponse(
                 order.getId(),
@@ -48,8 +53,7 @@ public class OrderService {
     }
 
     public OrderResponse findById(Long id){
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        Order order = findOrder(id);
         return toResponse(order);
     }
 
@@ -78,8 +82,7 @@ public class OrderService {
     }
 
     public OrderResponse closeOrder(Long id){
-        Order toClose = orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        Order toClose = findOrder(id);
 
         toClose.setStatus(OrderStatus.CLOSED);
         toClose.getRestaurantTable().setStatus(TableStatus.AVAILABLE);
@@ -90,8 +93,7 @@ public class OrderService {
     }
 
     public OrderResponse cancelOrder(Long id){
-        Order toCancel = orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        Order toCancel = findOrder(id);
 
         toCancel.setStatus(OrderStatus.CANCELLED);
         toCancel.getRestaurantTable().setStatus(TableStatus.AVAILABLE);
