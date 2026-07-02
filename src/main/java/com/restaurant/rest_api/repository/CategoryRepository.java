@@ -10,5 +10,4 @@ import java.util.Set;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-    List<Category> findAllById(@NotNull Set<Category> categories);
 }
