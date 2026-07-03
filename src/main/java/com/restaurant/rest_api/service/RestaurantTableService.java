@@ -41,7 +41,7 @@ public class RestaurantTableService {
         return toResponse(saved);
     }
 
-    public RestaurantTableResponse updateTable(RestaurantTableRequest request, Long id){
+    public RestaurantTableResponse updateTable(Long id, RestaurantTableRequest request){
         RestaurantTable toUpdate = repository.findById(id)
                 .orElseThrow(() -> new RestaurantTableNotFoundException(id));
 
