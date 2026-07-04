@@ -1,5 +1,6 @@
 package com.restaurant.rest_api.service;
 
+import com.restaurant.rest_api.dto.AuthResponse;
 import com.restaurant.rest_api.dto.LoginRequest;
 import com.restaurant.rest_api.dto.RegisterRequest;
 import com.restaurant.rest_api.dto.UserResponse;
@@ -8,6 +9,7 @@ import com.restaurant.rest_api.entity.User;
 import com.restaurant.rest_api.exception.EmailAlreadyExistsException;
 import com.restaurant.rest_api.exception.InvalidCredentialsException;
 import com.restaurant.rest_api.repository.UserRepository;
+import com.restaurant.rest_api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     private UserResponse toResponse(User user){
         return new UserResponse(
@@ -43,7 +46,7 @@ public class AuthService {
         return toResponse(saved);
     }
 
-    public UserResponse login(LoginRequest request){
+    public AuthResponse login(LoginRequest request){
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException());
 
@@ -51,6 +54,14 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        return toResponse(user);
+        String token = jwtService.generateToken(user);
+
+        return new AuthResponse(
+                token,
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole()
+        );
     }
 }
