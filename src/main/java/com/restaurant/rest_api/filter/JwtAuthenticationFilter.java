@@ -1,6 +1,7 @@
 package com.restaurant.rest_api.filter;
 
 import com.restaurant.rest_api.entity.User;
+import com.restaurant.rest_api.exception.InvalidTokenException;
 import com.restaurant.rest_api.exception.UserNotFoundException;
 import com.restaurant.rest_api.repository.UserRepository;
 import com.restaurant.rest_api.security.JwtService;
@@ -40,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null)
             if(jwtService.isTokenValid(token)){
                 User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new RuntimeException());
+                        .orElseThrow(() -> new InvalidTokenException(email));
 
                 UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(
