@@ -39,4 +39,10 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(InvalidCategoryIdsException.class)
+    public ResponseEntity<ErrorResponse> invalidCategoryIdsHandler(InvalidCategoryIdsException ex){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
 }
