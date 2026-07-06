@@ -33,4 +33,10 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> emailExistsHandler(EmailAlreadyExistsException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse(ex.getMessage()));
+    }
+
 }
