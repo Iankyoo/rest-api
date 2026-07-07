@@ -6,13 +6,12 @@ import com.restaurant.rest_api.entity.*;
 import com.restaurant.rest_api.exception.OrderNotFoundException;
 import com.restaurant.rest_api.exception.RestaurantTableNotFoundException;
 import com.restaurant.rest_api.exception.TableNotAvailableException;
-import com.restaurant.rest_api.exception.UserNotFoundException;
 import com.restaurant.rest_api.repository.OrderRepository;
 import com.restaurant.rest_api.repository.RestaurantTableRepository;
-import com.restaurant.rest_api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,7 +22,6 @@ import java.util.List;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final RestaurantTableRepository tableRepository;
-    private final UserRepository userRepository;
 
     private RestaurantTable findTable(Long id){
         return tableRepository.findById(id)
@@ -60,8 +58,9 @@ public class OrderService {
     public OrderResponse createOrder(OrderRequest request){
         RestaurantTable currentTable = findTable(request.tableId());
 
-        User currentUser = userRepository.findById(request.userId())
-                .orElseThrow(() -> new UserNotFoundException(request.userId()));
+        User currentUser = (User) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
 
         if (currentTable.getStatus() != TableStatus.AVAILABLE){
             throw new TableNotAvailableException(request.tableId());
