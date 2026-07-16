@@ -96,6 +96,33 @@ class CategoryServiceTest {
     }
 
     @Test
+    public void updateCategory_shouldKeepOriginalDescription_whenRequestDescriptionIsNull(){
+        Category existingCategory = buildCategory();
+
+        CategoryRequest request = new CategoryRequest("nameUpdated", null);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(existingCategory));
+        when(categoryRepository.save(any(Category.class))).thenReturn(existingCategory);
+
+        CategoryResponse result = categoryService.updateCategory(1L, request);
+
+        assertEquals("nameUpdated", result.name());
+        assertEquals("descriptionTest", result.description());
+        verify(categoryRepository).findById(1L);
+        verify(categoryRepository).save(existingCategory);
+    }
+
+    @Test
+    public void updateCategory_shouldThrowNotFoundException_whenIdDoesNotExist(){
+        CategoryRequest request = new CategoryRequest("test", "test");
+        when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(CategoryNotFoundException.class, () -> {
+            categoryService.updateCategory(999L, request);
+        });
+    }
+
+    @Test
     public void deleteCategoryTest(){
         Category category = buildCategory();
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
@@ -103,5 +130,14 @@ class CategoryServiceTest {
         categoryService.deleteCategory(1L);
 
         verify(categoryRepository).delete(category);
+    }
+
+    @Test
+    public void deleteCategory_shouldThrowNotFoundException_whenIdDoesNotExist(){
+        when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(CategoryNotFoundException.class, () -> {
+            categoryService.deleteCategory(999L);
+        });
     }
 }
