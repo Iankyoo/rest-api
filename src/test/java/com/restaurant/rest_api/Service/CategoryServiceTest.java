@@ -76,7 +76,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    public void updateTest(){
+    public void updateCategoryTest(){
         Category existingCategory = buildCategory();
 
         CategoryRequest request = new CategoryRequest(
@@ -93,5 +93,15 @@ class CategoryServiceTest {
         verify(categoryRepository).findById(1L);
         verify(categoryRepository).save(existingCategory);
 
+    }
+
+    @Test
+    public void deleteCategoryTest(){
+        Category category = buildCategory();
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        categoryService.deleteCategory(1L);
+
+        verify(categoryRepository).delete(category);
     }
 }
