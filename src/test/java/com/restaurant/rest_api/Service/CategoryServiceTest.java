@@ -74,4 +74,24 @@ class CategoryServiceTest {
         assertEquals(1, response.getTotalElements());
         assertEquals("nameTest", response.getContent().get(0).name());
     }
+
+    @Test
+    public void updateTest(){
+        Category existingCategory = buildCategory();
+
+        CategoryRequest request = new CategoryRequest(
+                "nameUpdated", "descriptionUpdated"
+        );
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(existingCategory));
+        when(categoryRepository.save(any(Category.class))).thenReturn(existingCategory);
+
+        CategoryResponse result = categoryService.updateCategory(1L, request);
+
+        assertEquals("nameUpdated", result.name());
+        assertEquals("descriptionUpdated", result.description());
+        verify(categoryRepository).findById(1L);
+        verify(categoryRepository).save(existingCategory);
+
+    }
 }
