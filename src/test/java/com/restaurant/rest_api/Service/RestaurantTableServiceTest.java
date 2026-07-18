@@ -111,4 +111,24 @@ public class RestaurantTableServiceTest {
 
         assertThrows(RestaurantTableNotFoundException.class, () -> {tableService.updateTable(999L, request);});
     }
+
+    @Test
+    public void deleteTableTest(){
+        RestaurantTable table = buildTable();
+
+        when(tableRepository.findById(1L)).thenReturn(Optional.of(table));
+
+        tableService.deleteTable(1L);
+
+        verify(tableRepository).delete(table);
+    }
+
+    @Test
+    public void deleteTable_shouldThrowNotFoundException_whenIdDoesNotExist(){
+        when(tableRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(RestaurantTableNotFoundException.class, () -> {
+            tableService.deleteTable(999L);
+        });
+    }
 }
