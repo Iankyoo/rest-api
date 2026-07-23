@@ -4,6 +4,7 @@ import com.restaurant.rest_api.dto.MenuItemRequest;
 import com.restaurant.rest_api.dto.MenuItemResponse;
 import com.restaurant.rest_api.entity.Category;
 import com.restaurant.rest_api.entity.MenuItem;
+import com.restaurant.rest_api.exception.InvalidCategoryIdsException;
 import com.restaurant.rest_api.fixtures.CategoryFixture;
 import com.restaurant.rest_api.fixtures.MenuItemFixture;
 import com.restaurant.rest_api.repository.CategoryRepository;
@@ -23,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -62,5 +64,25 @@ public class MenuItemServiceTest {
         assertEquals(Boolean.TRUE, result.available());
         assertEquals(1, result.categories().size());
         assertEquals(category.getName(), result.categories().iterator().next().name());
+    }
+
+    @Test
+    public void createMenuItem_shouldThrowException_whenCategoryIdsAreInvalid(){
+        Category category = CategoryFixture.buildCategory();
+        Set<Long> categoriesId = Set.of(category.getId(), 999L);
+
+        MenuItemRequest request = new MenuItemRequest(
+                "nameTest",
+                "descriptionTest",
+                new BigDecimal("35.00"),
+                Boolean.TRUE,
+                categoriesId
+        );
+
+        when(categoryRepository.findAllById(categoriesId)).thenReturn(List.of(category));
+
+        assertThrows(InvalidCategoryIdsException.class, () -> {
+            menuItemService.createMenuItem(request);
+        });
     }
 }
