@@ -5,6 +5,7 @@ import com.restaurant.rest_api.dto.MenuItemResponse;
 import com.restaurant.rest_api.entity.Category;
 import com.restaurant.rest_api.entity.MenuItem;
 import com.restaurant.rest_api.exception.InvalidCategoryIdsException;
+import com.restaurant.rest_api.exception.MenuItemNotFoundException;
 import com.restaurant.rest_api.fixtures.CategoryFixture;
 import com.restaurant.rest_api.fixtures.MenuItemFixture;
 import com.restaurant.rest_api.repository.CategoryRepository;
@@ -16,9 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import javax.swing.text.html.parser.Entity;
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -68,6 +67,7 @@ public class MenuItemServiceTest {
 
     @Test
     public void createMenuItem_shouldThrowException_whenCategoryIdsAreInvalid(){
+
         Category category = CategoryFixture.buildCategory();
         Set<Long> categoriesId = Set.of(category.getId(), 999L);
 
@@ -85,4 +85,40 @@ public class MenuItemServiceTest {
             menuItemService.createMenuItem(request);
         });
     }
+
+    @Test
+    public void findMenuItemByIdTest(){
+        MenuItem menuItem = MenuItemFixture.buildMenuItem();
+
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
+
+        MenuItemResponse result = menuItemService.findById(1L);
+
+        assertEquals(1L, result.id());
+        assertEquals("nameTest", result.name());
+    }
+
+    @Test
+    public void findMenuItemByWrongId_shouldThrowException(){
+        when(menuItemRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(MenuItemNotFoundException.class, () -> {
+            menuItemService.findById(999L);
+        });
+    }
+
+    @Test
+    public void updateMenuItemTest(){
+        MenuItem menuItem = MenuItemFixture.buildMenuItem();
+        Set<Long> categoriesId = Set.of(menuItem.getCategories().iterator().next().getId());
+
+        MenuItemRequest request = new MenuItemRequest(
+                "nameTest",
+                "descriptionTest",
+                new BigDecimal("35.00"),
+                Boolean.TRUE,
+                categoriesId
+        );
+
+        when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));}
 }
