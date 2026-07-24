@@ -16,6 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -120,5 +124,20 @@ public class MenuItemServiceTest {
                 categoriesId
         );
 
-        when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));}
+        when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));
+    }
+
+    @Test
+    public void findAllMenuItemTest(){
+        MenuItem menuItem = MenuItemFixture.buildMenuItem();
+        Pageable pageable = PageRequest.of(0,10);
+        Page<MenuItem> page = new PageImpl<>(List.of(menuItem));
+
+        when(menuItemRepository.findAll(pageable)).thenReturn(page);
+
+        Page<MenuItemResponse> result = menuItemService.findAll(pageable);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals(menuItem.getName(), result.getContent().get(0).name());
+    }
 }
