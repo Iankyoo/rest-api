@@ -114,17 +114,25 @@ public class MenuItemServiceTest {
     @Test
     public void updateMenuItemTest(){
         MenuItem menuItem = MenuItemFixture.buildMenuItem();
+        Category category = menuItem.getCategories().iterator().next();
         Set<Long> categoriesId = Set.of(menuItem.getCategories().iterator().next().getId());
 
         MenuItemRequest request = new MenuItemRequest(
-                "nameTest",
-                "descriptionTest",
+                "nameUpdated",
+                "descriptionUpdated",
                 new BigDecimal("35.00"),
                 Boolean.TRUE,
                 categoriesId
         );
 
         when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));
+        when(categoryRepository.findAllById(categoriesId)).thenReturn(List.of(category))
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(menuItem);
+
+        MenuItemResponse result = menuItemService.updateMenuItem(1L, request);
+
+        assertEquals("nameUpdated", result.name());
+        assertEquals("descriptionUpdated", result.description());
     }
 
     @Test
