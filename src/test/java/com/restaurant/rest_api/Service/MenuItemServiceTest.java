@@ -126,13 +126,35 @@ public class MenuItemServiceTest {
         );
 
         when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));
-        when(categoryRepository.findAllById(categoriesId)).thenReturn(List.of(category))
+        when(categoryRepository.findAllById(categoriesId)).thenReturn(List.of(category));
         when(menuItemRepository.save(any(MenuItem.class))).thenReturn(menuItem);
 
         MenuItemResponse result = menuItemService.updateMenuItem(1L, request);
 
         assertEquals("nameUpdated", result.name());
         assertEquals("descriptionUpdated", result.description());
+    }
+
+    @Test
+    public void updateMenuItem_shouldThrowException_WhenCategoriesIdNotExists(){
+        MenuItem menuItem = MenuItemFixture.buildMenuItem();
+        Category category = menuItem.getCategories().iterator().next();
+        Set<Long> categoriesId = Set.of(category.getId(), 999L);
+
+        MenuItemRequest request = new MenuItemRequest(
+                "nameUpdated",
+                "descriptionUpdated",
+                new BigDecimal("35.00"),
+                Boolean.TRUE,
+                categoriesId
+        );
+
+        when(menuItemRepository.findById(menuItem.getId())).thenReturn(Optional.of(menuItem));
+        when(categoryRepository.findAllById(categoriesId)).thenReturn(List.of(category));
+
+        assertThrows(InvalidCategoryIdsException.class, () -> {
+            menuItemService.updateMenuItem(menuItem.getId(), request);
+        });
     }
 
     @Test
