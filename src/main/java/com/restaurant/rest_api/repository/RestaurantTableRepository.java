@@ -1,7 +1,6 @@
 package com.restaurant.rest_api.repository;
 
 import com.restaurant.rest_api.entity.RestaurantTable;
-import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

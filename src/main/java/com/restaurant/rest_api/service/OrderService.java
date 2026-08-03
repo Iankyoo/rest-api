@@ -75,7 +75,6 @@ public class OrderService {
 
         currentTable.setStatus(TableStatus.OCCUPIED);
 
-        RestaurantTable updateTableStatus = tableRepository.save(currentTable);
         Order saved = orderRepository.save(newOrder);
         return toResponse(saved);
     }
