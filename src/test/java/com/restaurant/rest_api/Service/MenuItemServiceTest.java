@@ -29,6 +29,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -169,5 +170,25 @@ public class MenuItemServiceTest {
 
         assertEquals(1, result.getContent().size());
         assertEquals(menuItem.getName(), result.getContent().get(0).name());
+    }
+
+    @Test
+    public void deleteMenuItemTest(){
+        MenuItem menuItem = MenuItemFixture.buildMenuItem();
+
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
+
+        menuItemService.deleteMenuItem(1L);
+
+        verify(menuItemRepository).delete(menuItem);
+    }
+
+    @Test
+    public void deleteMenuItem_shouldThrowException_whenMenuItemNotFound(){
+        when(menuItemRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(MenuItemNotFoundException.class, () -> {
+            menuItemService.deleteMenuItem(999L);
+        });
     }
 }
