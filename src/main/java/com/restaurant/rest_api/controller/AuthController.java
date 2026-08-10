@@ -7,7 +7,6 @@ import com.restaurant.rest_api.dto.UserResponse;
 import com.restaurant.rest_api.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

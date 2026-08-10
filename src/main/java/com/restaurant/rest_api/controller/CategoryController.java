@@ -2,7 +2,6 @@ package com.restaurant.rest_api.controller;
 
 import com.restaurant.rest_api.dto.CategoryRequest;
 import com.restaurant.rest_api.dto.CategoryResponse;
-import com.restaurant.rest_api.entity.Category;
 import com.restaurant.rest_api.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
