@@ -2,7 +2,6 @@ package com.restaurant.rest_api.Service;
 
 import com.restaurant.rest_api.dto.OrderItemRequest;
 import com.restaurant.rest_api.dto.OrderItemResponse;
-import com.restaurant.rest_api.dto.OrderResponse;
 import com.restaurant.rest_api.entity.*;
 import com.restaurant.rest_api.exception.OrderItemNotFoundException;
 import com.restaurant.rest_api.fixtures.*;
@@ -10,7 +9,6 @@ import com.restaurant.rest_api.repository.MenuItemRepository;
 import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
 import com.restaurant.rest_api.service.OrderItemService;
-import org.aspectj.weaver.ast.Or;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
