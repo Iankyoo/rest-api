@@ -38,13 +38,17 @@ public class OrderItemService {
         return orderItem;
     }
 
+    private void validateOrderIsOpen(Order order){
+        if (order.getStatus() != OrderStatus.OPEN){
+            throw new OrderNotOpenException(order.getId());
+        }
+    }
+
     @Transactional
     public OrderItemResponse createOrderItem(Long id,OrderItemRequest request){
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new OrderNotFoundException(id));
-        if (order.getStatus() != OrderStatus.OPEN){
-            throw new OrderNotOpenException(id);
-        }
+        validateOrderIsOpen(order);
 
         MenuItem menuItem = menuItemRepository.findById(request.menuItemId())
                 .orElseThrow(() -> new MenuItemNotFoundException(request.menuItemId()));
@@ -77,6 +81,7 @@ public class OrderItemService {
     @Transactional
     public OrderItemResponse updateItemStatus(OrderItemStatus newStatus, Long itemId){
         OrderItem orderItem = findOrderItem(itemId);
+        validateOrderIsOpen(orderItem.getOrder());
 
         orderItem.setOrderItemStatus(newStatus);
         OrderItem saved = orderItemRepository.save(orderItem);
@@ -86,15 +91,13 @@ public class OrderItemService {
     @Transactional
     public void removeItem(Long itemId){
         OrderItem toRemove = findOrderItem(itemId);
+        Order order = toRemove.getOrder();
+        validateOrderIsOpen(order);
 
-        if (toRemove.getOrder().getStatus() == OrderStatus.OPEN){
-            BigDecimal subtotal = toRemove.getUnitPrice().multiply(BigDecimal.valueOf(toRemove.getQuantity()));
+        BigDecimal subtotal = toRemove.getUnitPrice().multiply(BigDecimal.valueOf(toRemove.getQuantity()));
+        order.setTotalPrice(order.getTotalPrice().subtract(subtotal));
 
-            toRemove.getOrder().setTotalPrice(
-                    toRemove.getOrder().getTotalPrice().subtract(subtotal)
-            );
-            orderRepository.save(toRemove.getOrder());
-        }
+        orderRepository.save(order);
         orderItemRepository.delete(toRemove);
     }
 }

@@ -4,6 +4,7 @@ import com.restaurant.rest_api.dto.OrderItemRequest;
 import com.restaurant.rest_api.dto.OrderItemResponse;
 import com.restaurant.rest_api.entity.*;
 import com.restaurant.rest_api.exception.OrderItemNotFoundException;
+import com.restaurant.rest_api.exception.OrderNotOpenException;
 import com.restaurant.rest_api.fixtures.*;
 import com.restaurant.rest_api.repository.MenuItemRepository;
 import com.restaurant.rest_api.repository.OrderItemRepository;
@@ -63,6 +64,22 @@ public class OrderItemServiceTest {
     }
 
     @Test
+    public void createOrderItem_shouldThrowException_whenOrderIsNotOpen(){
+        Order closedOrder = OrderFixture.buildOrder(
+                1L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
+                OrderStatus.CLOSED, new BigDecimal("10.00"), LocalDateTime.now()
+        );
+        OrderItemRequest request = new OrderItemRequest(1L, 1, null);
+
+        when(orderRepository.findById(closedOrder.getId())).thenReturn(Optional.of(closedOrder));
+
+        assertThrows(OrderNotOpenException.class, () -> {
+            orderItemService.createOrderItem(closedOrder.getId(), request);
+        });
+        verify(orderItemRepository, never()).save(any(OrderItem.class));
+    }
+
+    @Test
     public void updateOrderItemStatus(){
         OrderItem orderItem = OrderItemFixture.buildOrderItem();
 
@@ -86,6 +103,25 @@ public class OrderItemServiceTest {
     }
 
     @Test
+    public void updateOrderItemStatus_shouldThrowException_whenOrderIsNotOpen(){
+        Order closedOrder = OrderFixture.buildOrder(
+                1L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
+                OrderStatus.CLOSED, new BigDecimal("10.00"), LocalDateTime.now()
+        );
+        OrderItem orderItem = OrderItemFixture.buildOrderItem(
+                1L, closedOrder, MenuItemFixture.buildMenuItem(), 1, new BigDecimal("10.00"), null, OrderItemStatus.READY
+        );
+
+        when(orderItemRepository.findById(orderItem.getId())).thenReturn(Optional.of(orderItem));
+
+        assertThrows(OrderNotOpenException.class, () -> {
+            orderItemService.updateItemStatus(OrderItemStatus.DELIVERED, orderItem.getId());
+        });
+        assertEquals(OrderItemStatus.READY, orderItem.getOrderItemStatus());
+        verify(orderItemRepository, never()).save(any(OrderItem.class));
+    }
+
+    @Test
     public void removeOrderItem_whenOrderIsOpen_shouldRecalculateTotalAndDelete(){
         OrderItem orderItem = OrderItemFixture.buildOrderItem();
         BigDecimal originalTotal = orderItem.getOrder().getTotalPrice();
@@ -101,7 +137,7 @@ public class OrderItemServiceTest {
     }
 
     @Test
-    public void removeOrderItem_whenOrderIsClosed_shouldKeepOriginalTotal(){
+    public void removeOrderItem_shouldThrowException_whenOrderIsClosed(){
         Order closedOrder = OrderFixture.buildOrder(
                 1L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
                 OrderStatus.CLOSED, new BigDecimal("10.00"), LocalDateTime.now()
@@ -114,10 +150,12 @@ public class OrderItemServiceTest {
 
         when(orderItemRepository.findById(orderItem.getId())).thenReturn(Optional.of(orderItem));
 
-        orderItemService.removeItem(orderItem.getId());
+        assertThrows(OrderNotOpenException.class, () -> {
+            orderItemService.removeItem(orderItem.getId());
+        });
 
         assertEquals(originalTotal, orderItem.getOrder().getTotalPrice());
         verify(orderRepository, never()).save(any(Order.class));
-        verify(orderItemRepository).delete(orderItem);
+        verify(orderItemRepository, never()).delete(any(OrderItem.class));
     }
 }
