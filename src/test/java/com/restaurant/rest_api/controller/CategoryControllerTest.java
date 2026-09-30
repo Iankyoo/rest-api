@@ -1,7 +1,6 @@
 package com.restaurant.rest_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.restaurant.rest_api.controller.CategoryController;
 import com.restaurant.rest_api.dto.CategoryRequest;
 import com.restaurant.rest_api.dto.CategoryResponse;
 import com.restaurant.rest_api.exception.CategoryNotFoundException;
