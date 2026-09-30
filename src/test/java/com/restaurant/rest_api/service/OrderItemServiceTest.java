@@ -1,4 +1,4 @@
-package com.restaurant.rest_api.Service;
+package com.restaurant.rest_api.service;
 
 import com.restaurant.rest_api.dto.OrderItemRequest;
 import com.restaurant.rest_api.dto.OrderItemResponse;
