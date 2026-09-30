@@ -4,11 +4,14 @@ import com.restaurant.rest_api.dto.OrderRequest;
 import com.restaurant.rest_api.dto.OrderResponse;
 import com.restaurant.rest_api.entity.*;
 import com.restaurant.rest_api.exception.OrderNotFoundException;
+import com.restaurant.rest_api.exception.OrderNotOpenException;
 import com.restaurant.rest_api.exception.RestaurantTableNotFoundException;
 import com.restaurant.rest_api.exception.TableNotAvailableException;
 import com.restaurant.rest_api.fixtures.OrderFixture;
+import com.restaurant.rest_api.fixtures.OrderItemFixture;
 import com.restaurant.rest_api.fixtures.RestaurantTableFixture;
 import com.restaurant.rest_api.fixtures.UserFixture;
+import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
 import com.restaurant.rest_api.repository.RestaurantTableRepository;
 import com.restaurant.rest_api.service.OrderService;
@@ -27,6 +30,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +45,8 @@ public class OrderServiceTest {
     private RestaurantTableRepository tableRepository;
     @Mock
     private OrderRepository orderRepository;
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -125,6 +132,21 @@ public class OrderServiceTest {
     }
 
     @Test
+    public void closeOrder_shouldThrowException_whenOrderIsNotOpen(){
+        Order order = OrderFixture.buildOrder(
+                1L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
+                OrderStatus.CANCELLED, new BigDecimal("10.00"), LocalDateTime.now()
+        );
+
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(OrderNotOpenException.class, () -> {
+            orderService.closeOrder(order.getId());
+        });
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     public void cancelOrder(){
         Order order = OrderFixture.buildOrder();
 
@@ -141,6 +163,21 @@ public class OrderServiceTest {
     }
 
     @Test
+    public void cancelOrder_shouldThrowException_whenOrderIsNotOpen(){
+        Order order = OrderFixture.buildOrder(
+                1L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
+                OrderStatus.CLOSED, new BigDecimal("10.00"), LocalDateTime.now()
+        );
+
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(OrderNotOpenException.class, () -> {
+            orderService.cancelOrder(order.getId());
+        });
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     public void findById(){
         Order order = OrderFixture.buildOrder();
 
@@ -150,6 +187,21 @@ public class OrderServiceTest {
 
         assertEquals(order.getId(), result.id());
         verify(orderRepository).findById(order.getId());
+    }
+
+    @Test
+    public void findById_shouldReturnOrderItems(){
+        Order order = OrderFixture.buildOrder();
+        OrderItem orderItem = OrderItemFixture.buildOrderItem();
+
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(orderItem));
+
+        OrderResponse result = orderService.findById(order.getId());
+
+        assertEquals(1, result.items().size());
+        assertEquals(orderItem.getId(), result.items().get(0).id());
+        assertEquals(orderItem.getMenuItem().getName(), result.items().get(0).menuItemName());
     }
 
     @Test

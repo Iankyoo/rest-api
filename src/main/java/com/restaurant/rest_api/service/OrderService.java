@@ -1,11 +1,14 @@
 package com.restaurant.rest_api.service;
 
+import com.restaurant.rest_api.dto.OrderItemResponse;
 import com.restaurant.rest_api.dto.OrderRequest;
 import com.restaurant.rest_api.dto.OrderResponse;
 import com.restaurant.rest_api.entity.*;
 import com.restaurant.rest_api.exception.OrderNotFoundException;
+import com.restaurant.rest_api.exception.OrderNotOpenException;
 import com.restaurant.rest_api.exception.RestaurantTableNotFoundException;
 import com.restaurant.rest_api.exception.TableNotAvailableException;
+import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
 import com.restaurant.rest_api.repository.RestaurantTableRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.List;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final RestaurantTableRepository tableRepository;
+    private final OrderItemRepository orderItemRepository;
 
     private RestaurantTable findTable(Long id){
         return tableRepository.findById(id)
@@ -34,7 +38,29 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
+    private void validateOrderIsOpen(Order order){
+        if (order.getStatus() != OrderStatus.OPEN){
+            throw new OrderNotOpenException(order.getId());
+        }
+    }
+
+    private OrderItemResponse toItemResponse(OrderItem orderItem){
+        return new OrderItemResponse(
+                orderItem.getId(),
+                orderItem.getMenuItem().getId(),
+                orderItem.getMenuItem().getName(),
+                orderItem.getQuantity(),
+                orderItem.getUnitPrice(),
+                orderItem.getObservation(),
+                orderItem.getOrderItemStatus()
+        );
+    }
+
     private OrderResponse toResponse(Order order){
+        List<OrderItemResponse> items = orderItemRepository.findByOrderId(order.getId()).stream()
+                .map(this::toItemResponse)
+                .toList();
+
         return new OrderResponse(
                 order.getId(),
                 order.getStatus(),
@@ -42,7 +68,7 @@ public class OrderService {
                 order.getCreatedAt(),
                 order.getRestaurantTable().getId(),
                 order.getUser().getId(),
-                List.of()
+                items
         );
     }
 
@@ -87,6 +113,7 @@ public class OrderService {
     @Transactional
     public OrderResponse closeOrder(Long id){
         Order toClose = findOrder(id);
+        validateOrderIsOpen(toClose);
 
         toClose.setStatus(OrderStatus.CLOSED);
         toClose.getRestaurantTable().setStatus(TableStatus.AVAILABLE);
@@ -99,6 +126,7 @@ public class OrderService {
     @Transactional
     public OrderResponse cancelOrder(Long id){
         Order toCancel = findOrder(id);
+        validateOrderIsOpen(toCancel);
 
         toCancel.setStatus(OrderStatus.CANCELLED);
         toCancel.getRestaurantTable().setStatus(TableStatus.AVAILABLE);
