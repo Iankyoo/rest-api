@@ -47,10 +47,7 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getMessage()));
     }
 
-    @ExceptionHandler({
-            InvalidTokenException.class,
-            InvalidCredentialsException.class
-    })
+    @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> unauthorizedHandler(RuntimeException ex){
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse(ex.getMessage()));
