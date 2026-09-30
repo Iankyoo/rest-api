@@ -25,9 +25,7 @@ Projeto desenvolvido com foco em fixar o workflow completo de construção de um
 O sistema simula o fluxo real de um restaurante: usuários autenticam, mesas são ocupadas, pedidos são abertos, itens são adicionados ao pedido e a comanda é fechada.
 
 ```
-User (1) ──────────────── (1) Profile
- │
- └──── (1) ──── (*) Order
+User (1) ──── (*) Order
                   │
                   └──── (1) ──── (*) OrderItem ────(*) ──── (1) MenuItem
                                                                   │
@@ -39,7 +37,6 @@ User (1) ──────────────── (1) Profile
 | Entidade | Responsabilidade |
 |---|---|
 | `User` | Autenticação e autorização (roles: `CUSTOMER`, `WAITER`, `ADMIN`) |
-| `Profile` | Dados complementares do usuário (telefone, bio, avatar) |
 | `Category` | Categoria do cardápio (ex: Bebidas, Pratos principais) |
 | `MenuItem` | Item do cardápio (nome, preço, disponibilidade) |
 | `RestaurantTable` | Mesa física do restaurante (número, capacidade, status) |
@@ -156,23 +153,26 @@ Todo o restante exige autenticação.
 - Maven
 - Docker
 
-### 1. Subir o banco de dados
+### 1. Configurar variáveis de ambiente
+
+Credenciais do banco e a chave JWT não ficam no repositório. Copie o arquivo de exemplo e preencha os valores:
 
 ```bash
-docker-compose up -d
+cp .env.example .env
 ```
 
-### 2. Configurar variáveis de ambiente
+Para gerar o `JWT_SECRET` (mínimo 256 bits, em Base64):
 
-Ajuste o `application.properties` com suas credenciais de banco e uma chave secreta JWT (mínimo 256 bits, em Base64):
+```bash
+openssl rand -base64 64
+```
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5434/restaurant_db
-spring.datasource.username=restaurant_user
-spring.datasource.password=restaurant_pass
+O `.env` é lido tanto pelo Docker Compose quanto pelo Spring Boot (via `spring.config.import`).
 
-jwt.secret=sua-chave-secreta-em-base64
-jwt.expiration=86400000
+### 2. Subir o banco de dados
+
+```bash
+docker compose up -d
 ```
 
 ### 3. Rodar a aplicação
