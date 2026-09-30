@@ -9,7 +9,6 @@ import com.restaurant.rest_api.fixtures.*;
 import com.restaurant.rest_api.repository.MenuItemRepository;
 import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
-import com.restaurant.rest_api.service.OrderItemService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
