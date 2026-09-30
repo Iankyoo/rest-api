@@ -21,12 +21,13 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static com.restaurant.rest_api.fixtures.CategoryFixture.buildCategory;
 
 @ExtendWith(MockitoExtension.class)
-class CategoryServiceTest {
+public class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
@@ -49,6 +50,20 @@ class CategoryServiceTest {
         assertEquals("nameTest", response.name());
         assertEquals("descriptionTest", response.description());
         verify(categoryRepository).save(any(Category.class));
+    }
+
+    @Test
+    public void findById(){
+        Category category = buildCategory();
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        CategoryResponse response = categoryService.findById(1L);
+
+        assertEquals(1L, response.id());
+        assertEquals("nameTest", response.name());
+        assertEquals("descriptionTest", response.description());
+        verify(categoryRepository).findById(1L);
     }
 
     @Test
@@ -119,6 +134,7 @@ class CategoryServiceTest {
         assertThrows(CategoryNotFoundException.class, () -> {
             categoryService.updateCategory(999L, request);
         });
+        verify(categoryRepository, never()).save(any(Category.class));
     }
 
     @Test
@@ -138,5 +154,6 @@ class CategoryServiceTest {
         assertThrows(CategoryNotFoundException.class, () -> {
             categoryService.deleteCategory(999L);
         });
+        verify(categoryRepository, never()).delete(any(Category.class));
     }
 }
