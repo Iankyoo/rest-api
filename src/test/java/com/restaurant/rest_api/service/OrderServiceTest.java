@@ -14,7 +14,6 @@ import com.restaurant.rest_api.fixtures.UserFixture;
 import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
 import com.restaurant.rest_api.repository.RestaurantTableRepository;
-import com.restaurant.rest_api.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
