@@ -1,4 +1,4 @@
-package com.restaurant.rest_api.Controller;
+package com.restaurant.rest_api.controller;
 
 import com.restaurant.rest_api.repository.UserRepository;
 import com.restaurant.rest_api.security.JwtService;

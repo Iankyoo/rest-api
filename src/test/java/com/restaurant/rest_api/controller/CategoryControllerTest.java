@@ -1,4 +1,4 @@
-package com.restaurant.rest_api.Controller;
+package com.restaurant.rest_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.restaurant.rest_api.controller.CategoryController;
