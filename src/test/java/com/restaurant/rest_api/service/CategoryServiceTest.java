@@ -5,7 +5,6 @@ import com.restaurant.rest_api.dto.CategoryResponse;
 import com.restaurant.rest_api.entity.Category;
 import com.restaurant.rest_api.exception.CategoryNotFoundException;
 import com.restaurant.rest_api.repository.CategoryRepository;
-import com.restaurant.rest_api.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
