@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -107,5 +109,32 @@ public class CategoryControllerTest extends BaseControllerTest {
 
         mockMvc.perform(delete("/api/v1/categories/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void createCategory_shouldReturn400_whenBodyIsMalformed() throws Exception {
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Malformed request body or invalid field value"));
+    }
+
+    @Test
+    public void deleteCategory_shouldReturn409_whenCategoryIsInUse() throws Exception {
+        doThrow(new DataIntegrityViolationException("fk violation"))
+                .when(categoryService).deleteCategory(1L);
+
+        mockMvc.perform(delete("/api/v1/categories/1"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    public void findCategoryById_shouldReturn500WithGenericMessage_whenUnexpectedErrorOccurs() throws Exception {
+        when(categoryService.findById(1L)).thenThrow(new RuntimeException("internal detail"));
+
+        mockMvc.perform(get("/api/v1/categories/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Internal server error"));
     }
 }
