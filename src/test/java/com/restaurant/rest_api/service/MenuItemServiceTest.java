@@ -10,7 +10,6 @@ import com.restaurant.rest_api.fixtures.CategoryFixture;
 import com.restaurant.rest_api.fixtures.MenuItemFixture;
 import com.restaurant.rest_api.repository.CategoryRepository;
 import com.restaurant.rest_api.repository.MenuItemRepository;
-import com.restaurant.rest_api.service.MenuItemService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
