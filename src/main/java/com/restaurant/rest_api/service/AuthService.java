@@ -13,6 +13,7 @@ import com.restaurant.rest_api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public UserResponse register(RegisterRequest request){
         if (userRepository.findByEmail(request.email()).isPresent()){
             throw new EmailAlreadyExistsException(request.email());
@@ -46,6 +48,7 @@ public class AuthService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request){
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException());

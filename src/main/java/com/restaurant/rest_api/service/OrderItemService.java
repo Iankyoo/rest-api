@@ -9,6 +9,7 @@ import com.restaurant.rest_api.repository.OrderItemRepository;
 import com.restaurant.rest_api.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -37,6 +38,7 @@ public class OrderItemService {
         return orderItem;
     }
 
+    @Transactional
     public OrderItemResponse createOrderItem(Long id,OrderItemRequest request){
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new OrderNotFoundException(id));
@@ -72,6 +74,7 @@ public class OrderItemService {
         return toResponse(saved);
     }
 
+    @Transactional
     public OrderItemResponse updateItemStatus(OrderItemStatus newStatus, Long itemId){
         OrderItem orderItem = findOrderItem(itemId);
 
@@ -80,6 +83,7 @@ public class OrderItemService {
         return toResponse(saved);
     }
 
+    @Transactional
     public void removeItem(Long itemId){
         OrderItem toRemove = findOrderItem(itemId);
 

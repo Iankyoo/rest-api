@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
@@ -20,17 +21,20 @@ public class RestaurantTableService {
         return new RestaurantTableResponse(table.getId(), table.getNumber(), table.getCapacity(), table.getStatus());
     }
 
+    @Transactional(readOnly = true)
     public Page<RestaurantTableResponse> findAll(Pageable pageable){
         return repository.findAll(pageable)
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public RestaurantTableResponse findById(Long id){
         RestaurantTable table = repository.findById(id)
                 .orElseThrow(() -> new RestaurantTableNotFoundException(id));
         return toResponse(table);
     }
 
+    @Transactional
     public RestaurantTableResponse createTable(RestaurantTableRequest request){
         RestaurantTable newTable = RestaurantTable.builder()
                 .number(request.number())
@@ -41,6 +45,7 @@ public class RestaurantTableService {
         return toResponse(saved);
     }
 
+    @Transactional
     public RestaurantTableResponse updateTable(Long id, RestaurantTableRequest request){
         RestaurantTable toUpdate = repository.findById(id)
                 .orElseThrow(() -> new RestaurantTableNotFoundException(id));
@@ -56,6 +61,7 @@ public class RestaurantTableService {
         return toResponse(saved);
     }
 
+    @Transactional
     public void deleteTable(Long id){
         RestaurantTable toDelete = repository.findById(id)
                 .orElseThrow(() -> new RestaurantTableNotFoundException(id));

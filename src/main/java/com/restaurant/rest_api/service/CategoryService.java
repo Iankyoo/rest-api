@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class CategoryService {
                 .orElseThrow(() -> new CategoryNotFoundException(id));
     }
 
+    @Transactional
     public CategoryResponse createCategory(CategoryRequest request){
         Category newCategory = Category.builder()
                 .name(request.name())
@@ -34,16 +36,19 @@ public class CategoryService {
     }
 
 
+    @Transactional(readOnly = true)
     public Page<CategoryResponse> findAll(Pageable pageable){
         return repository.findAll(pageable)
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public CategoryResponse findById(Long id){
         Category category = findCategory(id);
         return toResponse(category);
     }
 
+    @Transactional
     public CategoryResponse updateCategory(Long id, CategoryRequest request){
         Category category = findCategory(id);
         category.setName(request.name());
@@ -54,6 +59,7 @@ public class CategoryService {
         return toResponse(saved);
     }
 
+    @Transactional
     public void deleteCategory(Long id){
         Category toDelete = findCategory(id);
         repository.delete(toDelete);

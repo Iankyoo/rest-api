@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,16 +46,19 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
     public Page<OrderResponse> findAll(Pageable pageable){
         return orderRepository.findAll(pageable)
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public OrderResponse findById(Long id){
         Order order = findOrder(id);
         return toResponse(order);
     }
 
+    @Transactional
     public OrderResponse createOrder(OrderRequest request){
         RestaurantTable currentTable = findTable(request.tableId());
 
@@ -74,11 +78,13 @@ public class OrderService {
                 .build();
 
         currentTable.setStatus(TableStatus.OCCUPIED);
+        tableRepository.save(currentTable);
 
         Order saved = orderRepository.save(newOrder);
         return toResponse(saved);
     }
 
+    @Transactional
     public OrderResponse closeOrder(Long id){
         Order toClose = findOrder(id);
 
@@ -90,6 +96,7 @@ public class OrderService {
         return toResponse(saved);
     }
 
+    @Transactional
     public OrderResponse cancelOrder(Long id){
         Order toCancel = findOrder(id);
 

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +43,7 @@ public class MenuItemService {
         return categories;
     }
 
+    @Transactional
     public MenuItemResponse createMenuItem(MenuItemRequest request){
 
         MenuItem newMenuItem = MenuItem.builder()
@@ -57,17 +59,20 @@ public class MenuItemService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public Page<MenuItemResponse> findAll(Pageable pageable){
         return menuItemRepository.findAll(pageable)
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public MenuItemResponse findById(Long id){
         MenuItem menuItem = menuItemRepository.findById(id)
                 .orElseThrow(()-> new MenuItemNotFoundException(id));
         return toResponse(menuItem);
     }
 
+    @Transactional
     public MenuItemResponse updateMenuItem(Long id, MenuItemRequest request){
         MenuItem toUpdate = menuItemRepository.findById(id)
                         .orElseThrow(() -> new MenuItemNotFoundException(id));
@@ -89,6 +94,7 @@ public class MenuItemService {
         return toResponse(saved);
     }
 
+    @Transactional
     public void deleteMenuItem(Long id){
         MenuItem toDelete = menuItemRepository.findById(id)
                         .orElseThrow(()-> new MenuItemNotFoundException(id));
