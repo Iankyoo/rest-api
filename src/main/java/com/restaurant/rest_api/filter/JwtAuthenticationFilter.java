@@ -1,7 +1,6 @@
 package com.restaurant.rest_api.filter;
 
 import com.restaurant.rest_api.entity.User;
-import com.restaurant.rest_api.exception.InvalidTokenException;
 import com.restaurant.rest_api.repository.UserRepository;
 import com.restaurant.rest_api.security.JwtService;
 import jakarta.servlet.FilterChain;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -33,19 +33,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHead.substring(7);
+
+        if (!jwtService.isTokenValid(token) || SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String email = jwtService.getEmail(token);
+        Optional<User> user = userRepository.findByEmail(email);
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null){
-            if (jwtService.isTokenValid(token)) {
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new InvalidTokenException(email));
-
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                user, null, user.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        if (user.isPresent()){
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            user.get(), null, user.get().getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
         filterChain.doFilter(request, response);
     }
