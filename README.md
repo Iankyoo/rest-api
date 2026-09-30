@@ -68,14 +68,26 @@ A API usa **Spring Security + JWT** com sessão `STATELESS` — o servidor não 
    ```
 4. O `JwtAuthenticationFilter` intercepta cada requisição, valida o token e popula o `SecurityContextHolder` com o usuário autenticado
 
-### Rotas públicas
+### Autorização por role
 
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `GET /api/v1/categories/**`
-- `GET /api/v1/menuitems/**`
+A API é um sistema interno do restaurante: o admin cuida do cardápio e das mesas, o garçom opera as comandas e o cliente apenas consulta o cardápio. As regras ficam centralizadas no `SecurityConfig`.
 
-Todo o restante exige autenticação.
+| Recurso | Público | CUSTOMER | WAITER | ADMIN |
+|---|---|---|---|---|
+| `POST /api/v1/auth/**` | ✅ | ✅ | ✅ | ✅ |
+| `GET` categories / menuitems | ✅ | ✅ | ✅ | ✅ |
+| `POST/PUT/DELETE` categories / menuitems | | | | ✅ |
+| `GET` tables | | | ✅ | ✅ |
+| `POST/PUT/DELETE` tables | | | | ✅ |
+| Orders e order items | | | ✅ | ✅ |
+| `PATCH /api/v1/users/{id}/role` | | | | ✅ |
+
+- Sem token (ou com token inválido): **401 Unauthorized**
+- Autenticado, mas sem a role necessária: **403 Forbidden**
+
+### Admin inicial
+
+Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais de `ADMIN_EMAIL` e `ADMIN_PASSWORD` (definidas no `.env`), caso ele ainda não exista. A partir dele, outros usuários podem ser promovidos a `WAITER` ou `ADMIN`.
 
 ---
 
@@ -129,6 +141,11 @@ Todo o restante exige autenticação.
 | POST | `/api/v1/orders/{orderId}/items` | Adiciona um item ao pedido |
 | PATCH | `/api/v1/items/{itemId}/status` | Atualiza o status do item |
 | DELETE | `/api/v1/items/{itemId}` | Remove item do pedido |
+
+### Users
+| Método | Rota | Descrição |
+|---|---|---|
+| PATCH | `/api/v1/users/{id}/role` | Altera a role de um usuário (somente `ADMIN`) |
 
 ---
 
@@ -216,7 +233,7 @@ curl -X POST http://localhost:8080/api/v1/categories \
 - [x] Controllers REST
 - [x] Autenticação e autorização com Spring Security + JWT
 - [x] Tratamento global de exceções por status HTTP
-- [ ] Autorização por role (`@PreAuthorize` / `hasRole`)
+- [x] Autorização por role (`hasRole` no `SecurityConfig`)
 - [ ] Testes unitários (JUnit 5 + Mockito)
 - [ ] Testes de integração (Testcontainers)
 - [ ] Documentação da API (SpringDoc OpenAPI/Swagger)
