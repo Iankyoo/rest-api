@@ -1,5 +1,7 @@
 # 🍽️ Restaurant Management API
 
+[![CI](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml)
+
 API REST para gestão de restaurante, construída com Java e Spring Boot, cobrindo desde modelagem de dados com relacionamentos complexos até autenticação e autorização com JWT.
 
 Projeto desenvolvido com foco em fixar o workflow completo de construção de uma API profissional: entidades, relacionamentos JPA, camada de serviço com regras de negócio, tratamento de exceções, segurança com Spring Security e testes.
@@ -16,7 +18,10 @@ Projeto desenvolvido com foco em fixar o workflow completo de construção de um
 - **Docker / Docker Compose**
 - **Lombok**
 - **Bean Validation (Jakarta Validation)**
+- **SpringDoc OpenAPI (Swagger UI)**
+- **JUnit 5, Mockito e MockMvc** (H2 em memória nos testes)
 - **Maven**
+- **GitHub Actions** (CI)
 
 ---
 
@@ -154,11 +159,27 @@ Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais 
 - Um pedido só pode ser criado se a mesa estiver com status `AVAILABLE`
 - Ao criar um pedido, a mesa passa automaticamente para `OCCUPIED`
 - Ao fechar ou cancelar um pedido, a mesa volta para `AVAILABLE`
-- Itens só podem ser adicionados a pedidos com status `OPEN`
+- Itens só podem ser adicionados, removidos ou ter o status alterado em pedidos com status `OPEN` — pedido fechado ou cancelado é imutável
+- Só é possível fechar ou cancelar um pedido que ainda está `OPEN`
 - Itens só podem ser adicionados se o `MenuItem` estiver disponível (`available = true`)
 - O preço de cada `OrderItem` é congelado (snapshot) no momento da criação — mudanças futuras no preço do `MenuItem` não afetam pedidos já existentes
-- O `totalPrice` do pedido é recalculado automaticamente ao adicionar ou remover itens (apenas se o pedido ainda estiver `OPEN`)
+- O `totalPrice` do pedido é recalculado automaticamente ao adicionar ou remover itens
 - Todo novo usuário nasce com a role `CUSTOMER` — promoção para `WAITER`/`ADMIN` é uma ação administrativa, não uma escolha do próprio usuário no registro
+
+---
+
+## ❗ Tratamento de erros
+
+Todas as exceções passam pelo `GlobalExceptionHandler`, que devolve um status HTTP coerente e um corpo JSON padronizado (`{"message": "..."}`):
+
+| Status | Quando |
+|---|---|
+| 400 | Falha de validação (`@Valid`), JSON malformado, enum inválido ou regra de negócio violada (ex: pedido não está `OPEN`) |
+| 401 | Sem token, token inválido/expirado ou credenciais erradas no login |
+| 403 | Autenticado, mas sem a role necessária |
+| 404 | Recurso não encontrado |
+| 409 | Email já cadastrado, mesa ocupada ou recurso em uso (ex: apagar categoria vinculada a itens) |
+| 500 | Erro inesperado — mensagem genérica para o cliente, detalhes apenas no log |
 
 ---
 
@@ -167,8 +188,9 @@ Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais 
 ### Pré-requisitos
 
 - Java 21
-- Maven
 - Docker
+
+O Maven não precisa estar instalado: o projeto usa o Maven Wrapper (`./mvnw`).
 
 ### 1. Configurar variáveis de ambiente
 
@@ -202,27 +224,51 @@ A API estará disponível em `http://localhost:8080`.
 
 ---
 
-## 🧪 Testando a API
+## 📖 Documentação (Swagger)
 
-Exemplo de fluxo básico via cURL:
+Com a aplicação rodando, a documentação interativa fica em:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI (JSON): `http://localhost:8080/v3/api-docs`
+
+Para chamar rotas protegidas pelo Swagger, faça login em `POST /api/v1/auth/login`, copie o `token` da resposta e cole no botão **Authorize**.
+
+### Exemplo via cURL
 
 ```bash
-# Registro
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Ian","email":"ian@teste.com","password":"senha123"}'
-
-# Login
+# Login com o admin inicial (credenciais do .env)
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"ian@teste.com","password":"senha123"}'
+  -d '{"email":"admin@restaurant.com","password":"<ADMIN_PASSWORD>"}'
 
-# Criar categoria (autenticado)
+# Criar categoria (somente ADMIN)
 curl -X POST http://localhost:8080/api/v1/categories \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{"name":"Bebidas","description":"Sucos e refrigerantes"}'
+
+# Registrar um novo usuário (nasce como CUSTOMER)
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ian","email":"ian@teste.com","password":"senha123"}'
 ```
+
+---
+
+## 🧪 Testes
+
+```bash
+./mvnw test
+```
+
+Os testes usam H2 em memória, então não precisam do Docker nem do `.env`. O CI roda a mesma suíte a cada push na `main`.
+
+| Camada | Ferramentas | O que cobre |
+|---|---|---|
+| Services | JUnit 5 + Mockito | Regras de negócio isoladas, incluindo os caminhos de erro |
+| Controllers | `@WebMvcTest` + MockMvc | Status HTTP, validação de entrada e tratamento de exceções |
+| Segurança | `@WebMvcTest` + `@WithMockUser` | Matriz de roles (401/403/2xx), filtro JWT e `JwtService` |
+| Integração | `@SpringBootTest` + MockMvc + H2 | Fluxo completo: login → cardápio → mesa → pedido → itens → fechamento |
 
 ---
 
@@ -234,11 +280,15 @@ curl -X POST http://localhost:8080/api/v1/categories \
 - [x] Autenticação e autorização com Spring Security + JWT
 - [x] Tratamento global de exceções por status HTTP
 - [x] Autorização por role (`hasRole` no `SecurityConfig`)
-- [ ] Testes unitários (JUnit 5 + Mockito)
-- [ ] Testes de integração (Testcontainers)
-- [ ] Documentação da API (SpringDoc OpenAPI/Swagger)
-- [ ] Cache com Redis para consultas de cardápio
-- [ ] Notificação de pedidos em tempo real com RabbitMQ
+- [x] Testes unitários, de controller e de integração
+- [x] Documentação da API (SpringDoc OpenAPI/Swagger)
+- [x] CI com GitHub Actions
+
+### Próximos passos
+
+- Testes de integração com Testcontainers (Postgres real em vez de H2)
+- Migrations versionadas com Flyway no lugar do `ddl-auto=update`
+- Máquina de estados para o status dos itens (`PENDING → PREPARING → READY → DELIVERED`)
 
 ---
 
