@@ -4,9 +4,11 @@
 
 API REST para o dia a dia de um restaurante: cadastro do cardápio e das mesas, abertura de comandas, inclusão de itens e fechamento da conta. Feita com Java 21 e Spring Boot 3.5, com autenticação via JWT e permissões por perfil de usuário.
 
+![Swagger da API](docs/swagger.png)
+
 ## Stack
 
-Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation), PostgreSQL 16, JWT (jjwt 0.12.6), Lombok, SpringDoc OpenAPI, Docker Compose e Maven.
+Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation), PostgreSQL 16, JWT (jjwt 0.12.6), Lombok, SpringDoc OpenAPI, Docker (Dockerfile multi-stage e Compose) e Maven.
 
 Testes com JUnit 5, Mockito, MockMvc e H2. CI no GitHub Actions.
 
@@ -37,13 +39,15 @@ erDiagram
 - Comanda fechada ou cancelada não pode mais ser alterada: não aceita, não remove e não muda o status de itens, e não pode ser fechada ou cancelada de novo.
 - O valor total da comanda é recalculado ao adicionar ou remover itens.
 - O preço de cada item é copiado para a comanda no momento do pedido. Se o preço do cardápio mudar depois, as comandas antigas não são afetadas.
-- Todo usuário novo é criado como `CUSTOMER`. Só um `ADMIN` pode promover alguém a `WAITER` ou `ADMIN`.
+- Todo usuário novo é criado como `CUSTOMER`, com senha de no mínimo 8 caracteres. Só um `ADMIN` pode promover alguém a `WAITER` ou `ADMIN`.
 
 ## Autenticação e permissões
 
 O login devolve um JWT, que deve ser enviado nas próximas requisições no header `Authorization: Bearer <token>`. A API é stateless: o `JwtAuthenticationFilter` valida o token a cada requisição e carrega o usuário no `SecurityContext`. As senhas são salvas com BCrypt.
 
-O sistema foi pensado para uso interno: o admin cuida do cardápio e das mesas, o garçom opera as comandas e o cliente só consulta o cardápio. As regras de acesso ficam todas no `SecurityConfig`, e a coluna "Acesso" da tabela de endpoints mostra quem pode usar cada rota.
+O sistema foi pensado para uso interno do restaurante: o admin cuida do cardápio e das mesas, e o garçom lança e fecha as comandas. Clientes só consultam o cardápio, que é público; quem faz o pedido é o garçom, como num salão tradicional. Por isso o `CUSTOMER` não tem permissões extras: o cadastro serve para criar a conta que depois o admin promove a `WAITER`.
+
+As regras de acesso ficam todas no `SecurityConfig`, e a coluna "Acesso" da tabela de endpoints mostra quem pode usar cada rota.
 
 Requisição sem token ou com token inválido recebe `401`. Usuário autenticado sem o perfil necessário recebe `403`.
 
@@ -87,7 +91,7 @@ As exceções passam pelo `GlobalExceptionHandler`, que devolve o status adequad
 
 ## Como rodar
 
-Pré-requisitos: Java 21 e Docker. Não é preciso instalar o Maven, porque o projeto usa o Maven Wrapper.
+Pré-requisito: Docker.
 
 1. Crie o `.env` a partir do exemplo e preencha os valores. Para gerar o `JWT_SECRET`, use `openssl rand -base64 64`.
 
@@ -95,19 +99,15 @@ Pré-requisitos: Java 21 e Docker. Não é preciso instalar o Maven, porque o pr
    cp .env.example .env
    ```
 
-2. Suba o banco:
+2. Suba o banco e a API:
 
    ```bash
-   docker compose up -d
+   docker compose up --build
    ```
 
-3. Rode a aplicação:
+A API sobe em `http://localhost:8080`. O Compose só inicia a API depois que o Postgres passa no healthcheck, e o `.env` fornece as credenciais, que ficam fora do repositório.
 
-   ```bash
-   ./mvnw spring-boot:run
-   ```
-
-A API sobe em `http://localhost:8080`. O `.env` é lido pelo Docker Compose e pelo Spring Boot (via `spring.config.import`), então as credenciais ficam fora do repositório.
+Para desenvolver sem reconstruir a imagem a cada mudança, suba só o banco com `docker compose up -d postgres` e rode a API com `./mvnw spring-boot:run` (precisa de Java 21). Nesse modo o Spring Boot lê o `.env` direto, via `spring.config.import`.
 
 ## Documentação
 
@@ -145,7 +145,7 @@ Os testes usam H2 em memória, então rodam sem Docker e sem `.env`. O GitHub Ac
 
 - **`OrderItem` é uma entidade, não um `@ManyToMany`.** O item da comanda precisa guardar dados próprios: quantidade, observação, status e o preço no momento do pedido.
 - **Perfis como enum.** Com três perfis fixos, um enum no `User` e `hasRole` no `SecurityConfig` resolvem. Se os perfis precisassem ser configuráveis, o caminho seria uma tabela de perfis e permissões.
-- **Consulta extra na listagem de comandas.** O `GET /orders` busca os itens de cada comanda separadamente (problema N+1). Dá para resolver com `JOIN FETCH` ou `@EntityGraph`.
+- **N+1 na listagem de comandas.** Medido com `show-sql`: um `GET /orders` com 4 comandas faz 8 consultas, sendo uma em `order_item` para cada comanda. Dá para trazer os itens de todas as comandas da página numa consulta só, com `JOIN FETCH` ou `@EntityGraph`.
 - **Qualquer transição de status do item é aceita.** Não há validação de ordem, como impedir voltar de `DELIVERED` para `PENDING`.
 - **Schema gerado pelo Hibernate** (`ddl-auto=update`). Em produção, o certo seria usar migrations versionadas com Flyway.
 - **H2 nos testes.** É rápido e não depende de Docker, mas não se comporta exatamente como o PostgreSQL. Testcontainers resolveria isso.
