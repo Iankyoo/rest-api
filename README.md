@@ -2,258 +2,131 @@
 
 [![CI](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml)
 
-API REST para gestão de restaurante, construída com Java e Spring Boot, cobrindo desde modelagem de dados com relacionamentos complexos até autenticação e autorização com JWT.
-
-Projeto desenvolvido com foco em fixar o workflow completo de construção de uma API profissional: entidades, relacionamentos JPA, camada de serviço com regras de negócio, tratamento de exceções, segurança com Spring Security e testes.
-
----
+API REST para o dia a dia de um restaurante: cadastro do cardápio e das mesas, abertura de comandas, inclusão de itens e fechamento da conta. Feita com Java 21 e Spring Boot 3.5, com autenticação via JWT e permissões por perfil de usuário.
 
 ## Stack
 
-- **Java 21**
-- **Spring Boot 3.5**
-- **Spring Data JPA / Hibernate**
-- **Spring Security + JWT** (jjwt 0.12.6)
-- **PostgreSQL 16**
-- **Docker / Docker Compose**
-- **Lombok**
-- **Bean Validation (Jakarta Validation)**
-- **SpringDoc OpenAPI (Swagger UI)**
-- **JUnit 5, Mockito e MockMvc** (H2 em memória nos testes)
-- **Maven**
-- **GitHub Actions** (CI)
+Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation), PostgreSQL 16, JWT (jjwt 0.12.6), Lombok, SpringDoc OpenAPI, Docker Compose e Maven.
 
----
+Testes com JUnit 5, Mockito, MockMvc e H2. CI no GitHub Actions.
 
 ## Modelo de domínio
 
-O sistema simula o fluxo real de um restaurante: usuários autenticam, mesas são ocupadas, pedidos são abertos, itens são adicionados ao pedido e a comanda é fechada.
-
+```mermaid
+erDiagram
+    User ||--o{ Order : abre
+    RestaurantTable ||--o{ Order : recebe
+    Order ||--o{ OrderItem : contem
+    MenuItem ||--o{ OrderItem : "aparece em"
+    MenuItem }o--o{ Category : pertence
 ```
-User (1) ──── (*) Order
-                  │
-                  └──── (1) ──── (*) OrderItem ────(*) ──── (1) MenuItem
-                                                                  │
-                  RestaurantTable (1) ──── (*) Order    (*) ──── (*) Category
-```
 
-### Entidades
-
-| Entidade | Responsabilidade |
+| Entidade | O que representa |
 |---|---|
-| `User` | Autenticação e autorização (roles: `CUSTOMER`, `WAITER`, `ADMIN`) |
-| `Category` | Categoria do cardápio (ex: Bebidas, Pratos principais) |
-| `MenuItem` | Item do cardápio (nome, preço, disponibilidade) |
-| `RestaurantTable` | Mesa física do restaurante (número, capacidade, status) |
-| `Order` | Pedido/comanda vinculado a um usuário e uma mesa |
-| `OrderItem` | Item dentro de um pedido — tabela de junção rica entre `Order` e `MenuItem` |
+| `User` | Usuário do sistema, com perfil `CUSTOMER`, `WAITER` ou `ADMIN` |
+| `Category` | Categoria do cardápio, como Bebidas ou Pratos principais |
+| `MenuItem` | Item do cardápio, com preço e disponibilidade |
+| `RestaurantTable` | Mesa do salão, com número, capacidade e status |
+| `Order` | Comanda aberta para uma mesa |
+| `OrderItem` | Item lançado na comanda |
 
-### Por que `OrderItem` é uma entidade própria
+## Regras de negócio
 
-`OrderItem` não é um simples `@ManyToMany` entre `Order` e `MenuItem` porque carrega atributos próprios que um relacionamento simples não conseguiria armazenar:
+- Só é possível abrir comanda em mesa `AVAILABLE`. Ao abrir, a mesa passa para `OCCUPIED`; ao fechar ou cancelar, volta para `AVAILABLE`.
+- Itens só entram em comandas `OPEN` e só se o item do cardápio estiver disponível.
+- Comanda fechada ou cancelada não pode mais ser alterada: não aceita, não remove e não muda o status de itens, e não pode ser fechada ou cancelada de novo.
+- O valor total da comanda é recalculado ao adicionar ou remover itens.
+- O preço de cada item é copiado para a comanda no momento do pedido. Se o preço do cardápio mudar depois, as comandas antigas não são afetadas.
+- Todo usuário novo é criado como `CUSTOMER`. Só um `ADMIN` pode promover alguém a `WAITER` ou `ADMIN`.
 
-- `quantity` — quantidade do item no pedido
-- `unitPrice` — **preço snapshot**: o preço do item no momento exato da compra, preservado mesmo que o preço do `MenuItem` mude no futuro
-- `observation` — observações do cliente (ex: "sem cebola")
-- `orderItemStatus` — ciclo de vida próprio do item (`PENDING`, `PREPARING`, `READY`, `DELIVERED`, `CANCELLED`)
+## Autenticação e permissões
 
----
+O login devolve um JWT, que deve ser enviado nas próximas requisições no header `Authorization: Bearer <token>`. A API é stateless: o `JwtAuthenticationFilter` valida o token a cada requisição e carrega o usuário no `SecurityContext`. As senhas são salvas com BCrypt.
 
-## Autenticação e autorização
+O sistema foi pensado para uso interno: o admin cuida do cardápio e das mesas, o garçom opera as comandas e o cliente só consulta o cardápio. As regras de acesso ficam todas no `SecurityConfig`, e a coluna "Acesso" da tabela de endpoints mostra quem pode usar cada rota.
 
-A API usa **Spring Security + JWT** com sessão `STATELESS` — o servidor não guarda nenhum estado de sessão entre requisições; toda a informação necessária para autenticar o usuário vive dentro do próprio token.
+Requisição sem token ou com token inválido recebe `401`. Usuário autenticado sem o perfil necessário recebe `403`.
 
-### Fluxo
-
-1. `POST /api/v1/auth/register` — cria um novo usuário (role `CUSTOMER` por padrão, senha hasheada com BCrypt)
-2. `POST /api/v1/auth/login` — valida credenciais e retorna um JWT
-3. Requisições subsequentes enviam o token no header:
-   ```
-   Authorization: Bearer <token>
-   ```
-4. O `JwtAuthenticationFilter` intercepta cada requisição, valida o token e popula o `SecurityContextHolder` com o usuário autenticado
-
-### Autorização por role
-
-A API é um sistema interno do restaurante: o admin cuida do cardápio e das mesas, o garçom opera as comandas e o cliente apenas consulta o cardápio. As regras ficam centralizadas no `SecurityConfig`.
-
-| Recurso | Público | CUSTOMER | WAITER | ADMIN |
-|---|---|---|---|---|
-| `POST /api/v1/auth/**` | sim | sim | sim | sim |
-| `GET` categories / menuitems | sim | sim | sim | sim |
-| `POST/PUT/DELETE` categories / menuitems | | | | sim |
-| `GET` tables | | | sim | sim |
-| `POST/PUT/DELETE` tables | | | | sim |
-| Orders e order items | | | sim | sim |
-| `PATCH /api/v1/users/{id}/role` | | | | sim |
-
-- Sem token (ou com token inválido): **401 Unauthorized**
-- Autenticado, mas sem a role necessária: **403 Forbidden**
-
-### Admin inicial
-
-Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais de `ADMIN_EMAIL` e `ADMIN_PASSWORD` (definidas no `.env`), caso ele ainda não exista. A partir dele, outros usuários podem ser promovidos a `WAITER` ou `ADMIN`.
-
----
+Ao subir, a aplicação cria um usuário `ADMIN` com as credenciais `ADMIN_EMAIL` e `ADMIN_PASSWORD` do `.env`, caso ele ainda não exista.
 
 ## Endpoints
 
-### Auth
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/auth/register` | Cria um novo usuário |
-| POST | `/api/v1/auth/login` | Autentica e retorna um JWT |
+Todas as rotas começam com `/api/v1`. As listagens são paginadas (`?page=0&size=10`).
 
-### Categories
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/categories` | Cria uma categoria |
-| GET | `/api/v1/categories` | Lista categorias (paginado) |
-| GET | `/api/v1/categories/{id}` | Busca categoria por ID |
-| PUT | `/api/v1/categories/{id}` | Atualiza categoria |
-| DELETE | `/api/v1/categories/{id}` | Remove categoria |
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/auth/register` | Público | Cria um usuário `CUSTOMER` |
+| POST | `/auth/login` | Público | Autentica e devolve o JWT |
+| GET | `/categories`, `/categories/{id}` | Público | Lista ou busca categorias |
+| POST, PUT, DELETE | `/categories`, `/categories/{id}` | ADMIN | Cria, altera ou remove categoria |
+| GET | `/menuitems`, `/menuitems/{id}` | Público | Lista ou busca itens do cardápio |
+| POST, PUT, DELETE | `/menuitems`, `/menuitems/{id}` | ADMIN | Cria, altera ou remove item do cardápio |
+| GET | `/tables`, `/tables/{id}` | WAITER, ADMIN | Lista ou busca mesas |
+| POST, PUT, DELETE | `/tables`, `/tables/{id}` | ADMIN | Cria, altera ou remove mesa |
+| POST | `/orders` | WAITER, ADMIN | Abre comanda para uma mesa |
+| GET | `/orders`, `/orders/{id}` | WAITER, ADMIN | Lista comandas ou busca uma com seus itens |
+| PATCH | `/orders/{id}/close` | WAITER, ADMIN | Fecha a comanda |
+| PATCH | `/orders/{id}/cancel` | WAITER, ADMIN | Cancela a comanda |
+| POST | `/orders/{orderId}/items` | WAITER, ADMIN | Adiciona item à comanda |
+| PATCH | `/items/{itemId}/status` | WAITER, ADMIN | Muda o status do item (`PENDING`, `PREPARING`, `READY`, `DELIVERED`, `CANCELLED`) |
+| DELETE | `/items/{itemId}` | WAITER, ADMIN | Remove item da comanda |
+| PATCH | `/users/{id}/role` | ADMIN | Altera o perfil de um usuário |
 
-### Menu Items
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/menuitems` | Cria um item do cardápio |
-| GET | `/api/v1/menuitems` | Lista itens (paginado) |
-| GET | `/api/v1/menuitems/{id}` | Busca item por ID |
-| PUT | `/api/v1/menuitems/{id}` | Atualiza item |
-| DELETE | `/api/v1/menuitems/{id}` | Remove item |
+## Erros
 
-### Restaurant Tables
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/tables` | Cria uma mesa |
-| GET | `/api/v1/tables` | Lista mesas (paginado) |
-| GET | `/api/v1/tables/{id}` | Busca mesa por ID |
-| PUT | `/api/v1/tables/{id}` | Atualiza mesa |
-| DELETE | `/api/v1/tables/{id}` | Remove mesa |
+As exceções passam pelo `GlobalExceptionHandler`, que devolve o status adequado e um corpo no formato `{"message": "..."}`. Erros de validação devolvem um objeto com a mensagem de cada campo.
 
-### Orders
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/orders` | Abre um novo pedido (mesa vira `OCCUPIED`) |
-| GET | `/api/v1/orders` | Lista pedidos (paginado) |
-| GET | `/api/v1/orders/{id}` | Busca pedido por ID |
-| PATCH | `/api/v1/orders/{id}/close` | Fecha o pedido (mesa volta a `AVAILABLE`) |
-| PATCH | `/api/v1/orders/{id}/cancel` | Cancela o pedido (mesa volta a `AVAILABLE`) |
-
-### Order Items
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/orders/{orderId}/items` | Adiciona um item ao pedido |
-| PATCH | `/api/v1/items/{itemId}/status` | Atualiza o status do item |
-| DELETE | `/api/v1/items/{itemId}` | Remove item do pedido |
-
-### Users
-| Método | Rota | Descrição |
-|---|---|---|
-| PATCH | `/api/v1/users/{id}/role` | Altera a role de um usuário (somente `ADMIN`) |
-
----
-
-## Regras de negócio principais
-
-- Um pedido só pode ser criado se a mesa estiver com status `AVAILABLE`
-- Ao criar um pedido, a mesa passa automaticamente para `OCCUPIED`
-- Ao fechar ou cancelar um pedido, a mesa volta para `AVAILABLE`
-- Itens só podem ser adicionados, removidos ou ter o status alterado em pedidos com status `OPEN` — pedido fechado ou cancelado é imutável
-- Só é possível fechar ou cancelar um pedido que ainda está `OPEN`
-- Itens só podem ser adicionados se o `MenuItem` estiver disponível (`available = true`)
-- O preço de cada `OrderItem` é congelado (snapshot) no momento da criação — mudanças futuras no preço do `MenuItem` não afetam pedidos já existentes
-- O `totalPrice` do pedido é recalculado automaticamente ao adicionar ou remover itens
-- Todo novo usuário nasce com a role `CUSTOMER` — promoção para `WAITER`/`ADMIN` é uma ação administrativa, não uma escolha do próprio usuário no registro
-
----
-
-## Tratamento de erros
-
-Todas as exceções passam pelo `GlobalExceptionHandler`, que devolve um status HTTP coerente e um corpo JSON padronizado (`{"message": "..."}`):
-
-| Status | Quando |
+| Status | Quando acontece |
 |---|---|
-| 400 | Falha de validação (`@Valid`), JSON malformado, enum inválido ou regra de negócio violada (ex: pedido não está `OPEN`) |
-| 401 | Sem token, token inválido/expirado ou credenciais erradas no login |
-| 403 | Autenticado, mas sem a role necessária |
+| 400 | Campo inválido, JSON malformado ou regra de negócio violada, como mexer em comanda fechada |
+| 401 | Sem token, token inválido ou expirado, ou login com credenciais erradas |
+| 403 | Usuário sem o perfil necessário |
 | 404 | Recurso não encontrado |
-| 409 | Email já cadastrado, mesa ocupada ou recurso em uso (ex: apagar categoria vinculada a itens) |
-| 500 | Erro inesperado — mensagem genérica para o cliente, detalhes apenas no log |
+| 409 | Email já cadastrado, mesa ocupada ou recurso em uso, como apagar uma categoria que ainda tem itens |
+| 500 | Erro inesperado. O cliente recebe uma mensagem genérica e o detalhe fica só no log |
 
----
+## Como rodar
 
-## Como rodar o projeto
+Pré-requisitos: Java 21 e Docker. Não é preciso instalar o Maven, porque o projeto usa o Maven Wrapper.
 
-### Pré-requisitos
+1. Crie o `.env` a partir do exemplo e preencha os valores. Para gerar o `JWT_SECRET`, use `openssl rand -base64 64`.
 
-- Java 21
-- Docker
+   ```bash
+   cp .env.example .env
+   ```
 
-O Maven não precisa estar instalado: o projeto usa o Maven Wrapper (`./mvnw`).
+2. Suba o banco:
 
-### 1. Configurar variáveis de ambiente
+   ```bash
+   docker compose up -d
+   ```
 
-Credenciais do banco e a chave JWT não ficam no repositório. Copie o arquivo de exemplo e preencha os valores:
+3. Rode a aplicação:
 
-```bash
-cp .env.example .env
-```
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-Para gerar o `JWT_SECRET` (mínimo 256 bits, em Base64):
+A API sobe em `http://localhost:8080`. O `.env` é lido pelo Docker Compose e pelo Spring Boot (via `spring.config.import`), então as credenciais ficam fora do repositório.
 
-```bash
-openssl rand -base64 64
-```
+## Documentação
 
-O `.env` é lido tanto pelo Docker Compose quanto pelo Spring Boot (via `spring.config.import`).
+Com a aplicação rodando, o Swagger fica em `http://localhost:8080/swagger-ui.html`. Para testar rotas protegidas, faça login em `POST /api/v1/auth/login`, copie o `token` da resposta e cole no botão **Authorize**.
 
-### 2. Subir o banco de dados
-
-```bash
-docker compose up -d
-```
-
-### 3. Rodar a aplicação
+Também dá para testar pelo terminal:
 
 ```bash
-./mvnw spring-boot:run
-```
-
-A API estará disponível em `http://localhost:8080`.
-
----
-
-## Documentação (Swagger)
-
-Com a aplicação rodando, a documentação interativa fica em:
-
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- OpenAPI (JSON): `http://localhost:8080/v3/api-docs`
-
-Para chamar rotas protegidas pelo Swagger, faça login em `POST /api/v1/auth/login`, copie o `token` da resposta e cole no botão **Authorize**.
-
-### Exemplo via cURL
-
-```bash
-# Login com o admin inicial (credenciais do .env)
+# Login com o admin criado na inicialização
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@restaurant.com","password":"<ADMIN_PASSWORD>"}'
 
-# Criar categoria (somente ADMIN)
+# Criar uma categoria usando o token do admin
 curl -X POST http://localhost:8080/api/v1/categories \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{"name":"Bebidas","description":"Sucos e refrigerantes"}'
-
-# Registrar um novo usuário (nasce como CUSTOMER)
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Ian","email":"ian@teste.com","password":"senha123"}'
 ```
-
----
 
 ## Testes
 
@@ -261,38 +134,22 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 ./mvnw test
 ```
 
-Os testes usam H2 em memória, então não precisam do Docker nem do `.env`. O CI roda a mesma suíte a cada push na `main`.
+Os testes usam H2 em memória, então rodam sem Docker e sem `.env`. O GitHub Actions executa a mesma suíte a cada push na `main`.
 
-| Camada | Ferramentas | O que cobre |
-|---|---|---|
-| Services | JUnit 5 + Mockito | Regras de negócio isoladas, incluindo os caminhos de erro |
-| Controllers | `@WebMvcTest` + MockMvc | Status HTTP, validação de entrada e tratamento de exceções |
-| Segurança | `@WebMvcTest` + `@WithMockUser` | Matriz de roles (401/403/2xx), filtro JWT e `JwtService` |
-| Integração | `@SpringBootTest` + MockMvc + H2 | Fluxo completo: login → cardápio → mesa → pedido → itens → fechamento |
+- **Services:** testes unitários com Mockito, cobrindo as regras de negócio e os casos de erro.
+- **Controllers:** `@WebMvcTest` com MockMvc, verificando status HTTP, validação e tratamento de erros.
+- **Segurança:** permissões por perfil (401, 403 e acesso liberado), filtro JWT e geração/validação do token.
+- **Integração:** um teste com `@SpringBootTest` que percorre o fluxo inteiro, do login ao fechamento da comanda, sem mocks.
 
----
+## Decisões e limitações
 
-## Roadmap
-
-- [x] Modelagem de entidades e relacionamentos JPA
-- [x] Camada de repositórios, DTOs e serviços
-- [x] Controllers REST
-- [x] Autenticação e autorização com Spring Security + JWT
-- [x] Tratamento global de exceções por status HTTP
-- [x] Autorização por role (`hasRole` no `SecurityConfig`)
-- [x] Testes unitários, de controller e de integração
-- [x] Documentação da API (SpringDoc OpenAPI/Swagger)
-- [x] CI com GitHub Actions
-
-### Próximos passos
-
-- Testes de integração com Testcontainers (Postgres real em vez de H2)
-- Migrations versionadas com Flyway no lugar do `ddl-auto=update`
-- Máquina de estados para o status dos itens (`PENDING → PREPARING → READY → DELIVERED`)
-
----
+- **`OrderItem` é uma entidade, não um `@ManyToMany`.** O item da comanda precisa guardar dados próprios: quantidade, observação, status e o preço no momento do pedido.
+- **Perfis como enum.** Com três perfis fixos, um enum no `User` e `hasRole` no `SecurityConfig` resolvem. Se os perfis precisassem ser configuráveis, o caminho seria uma tabela de perfis e permissões.
+- **Consulta extra na listagem de comandas.** O `GET /orders` busca os itens de cada comanda separadamente (problema N+1). Dá para resolver com `JOIN FETCH` ou `@EntityGraph`.
+- **Qualquer transição de status do item é aceita.** Não há validação de ordem, como impedir voltar de `DELIVERED` para `PENDING`.
+- **Schema gerado pelo Hibernate** (`ddl-auto=update`). Em produção, o certo seria usar migrations versionadas com Flyway.
+- **H2 nos testes.** É rápido e não depende de Docker, mas não se comporta exatamente como o PostgreSQL. Testcontainers resolveria isso.
 
 ## Autor
 
-**Ian Kiyoshi Kobayashi**
-[GitHub](https://github.com/Iankyoo)
+Ian Kiyoshi Kobayashi · [GitHub](https://github.com/Iankyoo)
