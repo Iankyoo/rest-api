@@ -1,4 +1,4 @@
-# 🍽️ Restaurant Management API
+# Restaurant Management API
 
 [![CI](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Iankyoo/rest-api/actions/workflows/ci.yml)
 
@@ -8,7 +8,7 @@ Projeto desenvolvido com foco em fixar o workflow completo de construção de um
 
 ---
 
-## 🧱 Stack
+## Stack
 
 - **Java 21**
 - **Spring Boot 3.5**
@@ -25,7 +25,7 @@ Projeto desenvolvido com foco em fixar o workflow completo de construção de um
 
 ---
 
-## 📐 Modelo de domínio
+## Modelo de domínio
 
 O sistema simula o fluxo real de um restaurante: usuários autenticam, mesas são ocupadas, pedidos são abertos, itens são adicionados ao pedido e a comanda é fechada.
 
@@ -59,7 +59,7 @@ User (1) ──── (*) Order
 
 ---
 
-## 🔐 Autenticação e autorização
+## Autenticação e autorização
 
 A API usa **Spring Security + JWT** com sessão `STATELESS` — o servidor não guarda nenhum estado de sessão entre requisições; toda a informação necessária para autenticar o usuário vive dentro do próprio token.
 
@@ -79,13 +79,13 @@ A API é um sistema interno do restaurante: o admin cuida do cardápio e das mes
 
 | Recurso | Público | CUSTOMER | WAITER | ADMIN |
 |---|---|---|---|---|
-| `POST /api/v1/auth/**` | ✅ | ✅ | ✅ | ✅ |
-| `GET` categories / menuitems | ✅ | ✅ | ✅ | ✅ |
-| `POST/PUT/DELETE` categories / menuitems | | | | ✅ |
-| `GET` tables | | | ✅ | ✅ |
-| `POST/PUT/DELETE` tables | | | | ✅ |
-| Orders e order items | | | ✅ | ✅ |
-| `PATCH /api/v1/users/{id}/role` | | | | ✅ |
+| `POST /api/v1/auth/**` | sim | sim | sim | sim |
+| `GET` categories / menuitems | sim | sim | sim | sim |
+| `POST/PUT/DELETE` categories / menuitems | | | | sim |
+| `GET` tables | | | sim | sim |
+| `POST/PUT/DELETE` tables | | | | sim |
+| Orders e order items | | | sim | sim |
+| `PATCH /api/v1/users/{id}/role` | | | | sim |
 
 - Sem token (ou com token inválido): **401 Unauthorized**
 - Autenticado, mas sem a role necessária: **403 Forbidden**
@@ -96,7 +96,7 @@ Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais 
 
 ---
 
-## 📋 Endpoints
+## Endpoints
 
 ### Auth
 | Método | Rota | Descrição |
@@ -154,7 +154,7 @@ Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais 
 
 ---
 
-## ⚙️ Regras de negócio principais
+## Regras de negócio principais
 
 - Um pedido só pode ser criado se a mesa estiver com status `AVAILABLE`
 - Ao criar um pedido, a mesa passa automaticamente para `OCCUPIED`
@@ -168,7 +168,7 @@ Na inicialização, o `AdminSeeder` cria um usuário `ADMIN` com as credenciais 
 
 ---
 
-## ❗ Tratamento de erros
+## Tratamento de erros
 
 Todas as exceções passam pelo `GlobalExceptionHandler`, que devolve um status HTTP coerente e um corpo JSON padronizado (`{"message": "..."}`):
 
@@ -183,7 +183,7 @@ Todas as exceções passam pelo `GlobalExceptionHandler`, que devolve um status 
 
 ---
 
-## 🚀 Como rodar o projeto
+## Como rodar o projeto
 
 ### Pré-requisitos
 
@@ -224,7 +224,7 @@ A API estará disponível em `http://localhost:8080`.
 
 ---
 
-## 📖 Documentação (Swagger)
+## Documentação (Swagger)
 
 Com a aplicação rodando, a documentação interativa fica em:
 
@@ -255,7 +255,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ---
 
-## 🧪 Testes
+## Testes
 
 ```bash
 ./mvnw test
@@ -272,7 +272,7 @@ Os testes usam H2 em memória, então não precisam do Docker nem do `.env`. O C
 
 ---
 
-## 📌 Roadmap
+## Roadmap
 
 - [x] Modelagem de entidades e relacionamentos JPA
 - [x] Camada de repositórios, DTOs e serviços
@@ -292,7 +292,7 @@ Os testes usam H2 em memória, então não precisam do Docker nem do `.env`. O C
 
 ---
 
-## 👤 Autor
+## Autor
 
 **Ian Kiyoshi Kobayashi**
 [GitHub](https://github.com/Iankyoo)
