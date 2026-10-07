@@ -10,6 +10,24 @@ services:
       - "5434:5432"
     volumes:
       - restaurant_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: restaurant_api
+    env_file: .env
+    environment:
+      # Dentro da rede do compose o banco é acessado pelo nome do serviço, não por localhost
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   restaurant_data:
