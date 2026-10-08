@@ -8,7 +8,7 @@ API REST para o dia a dia de um restaurante: cadastro do cardápio e das mesas, 
 
 ## Stack
 
-Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation), PostgreSQL 16, JWT (jjwt 0.12.6), Lombok, SpringDoc OpenAPI, Docker (Dockerfile multi-stage e Compose) e Maven.
+Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation), PostgreSQL 16, JWT (jjwt 0.12.6), Flyway, Lombok, SpringDoc OpenAPI, Docker (Dockerfile multi-stage e Compose) e Maven.
 
 Testes com JUnit 5, Mockito, MockMvc e H2. CI no GitHub Actions.
 
@@ -134,7 +134,7 @@ curl -X POST http://localhost:8080/api/v1/categories \
 ./mvnw test
 ```
 
-Os testes usam H2 em memória, então rodam sem Docker e sem `.env`. O GitHub Actions executa a mesma suíte a cada push na `main`.
+Os testes usam H2 em memória, com o schema criado pelas mesmas migrations do Flyway, então rodam sem Docker e sem `.env`. O GitHub Actions executa a mesma suíte a cada push na `main`.
 
 - **Services:** testes unitários com Mockito, cobrindo as regras de negócio e os casos de erro.
 - **Controllers:** `@WebMvcTest` com MockMvc, verificando status HTTP, validação e tratamento de erros.
@@ -145,9 +145,9 @@ Os testes usam H2 em memória, então rodam sem Docker e sem `.env`. O GitHub Ac
 
 - **`OrderItem` é uma entidade, não um `@ManyToMany`.** O item da comanda precisa guardar dados próprios: quantidade, observação, status e o preço no momento do pedido.
 - **Perfis como enum.** Com três perfis fixos, um enum no `User` e `hasRole` no `SecurityConfig` resolvem. Se os perfis precisassem ser configuráveis, o caminho seria uma tabela de perfis e permissões.
-- **N+1 na listagem de comandas (corrigido).** Medido com `show-sql`, um `GET /orders` com 4 comandas fazia 8 consultas: uma em `order_item` para cada comanda, mais a carga lazy dos itens do cardápio. Agora a listagem busca os itens de todas as comandas da página numa consulta só (`findByOrderIdIn`, com `@EntityGraph` trazendo o item do cardápio junto), e o mesmo cenário faz 3 consultas: usuário do token, comandas e itens.
+- **N+1 na listagem de comandas (corrigido).** Medido com `show-sql` (ligue com `SHOW_SQL=true` no `.env`), um `GET /orders` com 4 comandas fazia 8 consultas: uma em `order_item` para cada comanda, mais a carga lazy dos itens do cardápio. Agora a listagem busca os itens de todas as comandas da página numa consulta só (`findByOrderIdIn`, com `@EntityGraph` trazendo o item do cardápio junto), e o mesmo cenário faz 3 consultas: usuário do token, comandas e itens.
 - **Qualquer transição de status do item é aceita.** Não há validação de ordem, como impedir voltar de `DELIVERED` para `PENDING`.
-- **Schema gerado pelo Hibernate** (`ddl-auto=update`). Em produção, o certo seria usar migrations versionadas com Flyway.
+- **Schema versionado com Flyway.** As tabelas são criadas pelas migrations em `src/main/resources/db/migration`, que rodam sozinhas quando a aplicação sobe. O Hibernate fica em `ddl-auto=validate`: só confere se as entidades batem com o banco e impede a subida se algo estiver diferente. Os testes rodam as mesmas migrations no H2, então uma migration quebrada falha no CI. Bancos criados antes do Flyway, pelo antigo `ddl-auto=update`, são marcados como V1 (`baseline-on-migrate`) e recebem só as migrations seguintes.
 - **H2 nos testes.** É rápido e não depende de Docker, mas não se comporta exatamente como o PostgreSQL. Testcontainers resolveria isso.
 
 ## Autor
