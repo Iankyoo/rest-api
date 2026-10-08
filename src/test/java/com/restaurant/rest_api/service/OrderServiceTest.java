@@ -7,6 +7,7 @@ import com.restaurant.rest_api.exception.OrderNotFoundException;
 import com.restaurant.rest_api.exception.OrderNotOpenException;
 import com.restaurant.rest_api.exception.RestaurantTableNotFoundException;
 import com.restaurant.rest_api.exception.TableNotAvailableException;
+import com.restaurant.rest_api.fixtures.MenuItemFixture;
 import com.restaurant.rest_api.fixtures.OrderFixture;
 import com.restaurant.rest_api.fixtures.OrderItemFixture;
 import com.restaurant.rest_api.fixtures.RestaurantTableFixture;
@@ -224,5 +225,34 @@ public class OrderServiceTest {
 
         assertEquals(1, result.getContent().size());
         verify(orderRepository).findAll(pageable);
+    }
+
+    @Test
+    public void findAll_shouldLoadItemsOfAllOrdersInOneQuery(){
+        Order firstOrder = OrderFixture.buildOrder();
+        Order secondOrder = OrderFixture.buildOrder(
+                2L, UserFixture.buildUser(), RestaurantTableFixture.buildTable(),
+                OrderStatus.OPEN, new BigDecimal("20.00"), LocalDateTime.now()
+        );
+        OrderItem firstItem = OrderItemFixture.buildOrderItem(
+                1L, firstOrder, MenuItemFixture.buildMenuItem(), 1, new BigDecimal("10.00"), null, OrderItemStatus.PENDING
+        );
+        OrderItem secondItem = OrderItemFixture.buildOrderItem(
+                2L, secondOrder, MenuItemFixture.buildMenuItem(), 1, new BigDecimal("10.00"), null, OrderItemStatus.PENDING
+        );
+        OrderItem thirdItem = OrderItemFixture.buildOrderItem(
+                3L, secondOrder, MenuItemFixture.buildMenuItem(), 1, new BigDecimal("10.00"), null, OrderItemStatus.PENDING
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(orderRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(firstOrder, secondOrder)));
+        when(orderItemRepository.findByOrderIdIn(List.of(1L, 2L))).thenReturn(List.of(firstItem, secondItem, thirdItem));
+
+        Page<OrderResponse> result = orderService.findAll(pageable);
+
+        assertEquals(1, result.getContent().get(0).items().size());
+        assertEquals(2, result.getContent().get(1).items().size());
+        verify(orderItemRepository, times(1)).findByOrderIdIn(List.of(1L, 2L));
+        verify(orderItemRepository, never()).findByOrderId(any());
     }
 }
