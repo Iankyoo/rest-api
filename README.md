@@ -145,7 +145,7 @@ Os testes usam H2 em memória, então rodam sem Docker e sem `.env`. O GitHub Ac
 
 - **`OrderItem` é uma entidade, não um `@ManyToMany`.** O item da comanda precisa guardar dados próprios: quantidade, observação, status e o preço no momento do pedido.
 - **Perfis como enum.** Com três perfis fixos, um enum no `User` e `hasRole` no `SecurityConfig` resolvem. Se os perfis precisassem ser configuráveis, o caminho seria uma tabela de perfis e permissões.
-- **N+1 na listagem de comandas.** Medido com `show-sql`: um `GET /orders` com 4 comandas faz 8 consultas, sendo uma em `order_item` para cada comanda. Dá para trazer os itens de todas as comandas da página numa consulta só, com `JOIN FETCH` ou `@EntityGraph`.
+- **N+1 na listagem de comandas (corrigido).** Medido com `show-sql`, um `GET /orders` com 4 comandas fazia 8 consultas: uma em `order_item` para cada comanda, mais a carga lazy dos itens do cardápio. Agora a listagem busca os itens de todas as comandas da página numa consulta só (`findByOrderIdIn`, com `@EntityGraph` trazendo o item do cardápio junto), e o mesmo cenário faz 3 consultas: usuário do token, comandas e itens.
 - **Qualquer transição de status do item é aceita.** Não há validação de ordem, como impedir voltar de `DELIVERED` para `PENDING`.
 - **Schema gerado pelo Hibernate** (`ddl-auto=update`). Em produção, o certo seria usar migrations versionadas com Flyway.
 - **H2 nos testes.** É rápido e não depende de Docker, mas não se comporta exatamente como o PostgreSQL. Testcontainers resolveria isso.
