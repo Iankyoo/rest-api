@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,6 +63,10 @@ public class OrderService {
                 .map(this::toItemResponse)
                 .toList();
 
+        return toResponse(order, items);
+    }
+
+    private OrderResponse toResponse(Order order, List<OrderItemResponse> items){
         return new OrderResponse(
                 order.getId(),
                 order.getStatus(),
@@ -74,8 +80,17 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Page<OrderResponse> findAll(Pageable pageable){
-        return orderRepository.findAll(pageable)
-                .map(this::toResponse);
+        Page<Order> orders = orderRepository.findAll(pageable);
+        List<Long> orderIds = orders.map(Order::getId).getContent();
+
+        // Busca os itens de todas as comandas da página numa consulta só, evitando o N+1
+        Map<Long, List<OrderItemResponse>> itemsByOrderId = orderItemRepository.findByOrderIdIn(orderIds).stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getOrder().getId(),
+                        Collectors.mapping(this::toItemResponse, Collectors.toList())
+                ));
+
+        return orders.map(order -> toResponse(order, itemsByOrderId.getOrDefault(order.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
